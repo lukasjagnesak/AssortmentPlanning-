@@ -212,6 +212,121 @@ Report is sent to operator via Telegram every Monday morning.
 
 ---
 
+## Monetization Stack (Netlify + propel.co)
+
+### Overview
+
+The site runs on **Netlify**. The monetization layer is bolt-on — no custom backend required in Month 1. All tools below have free tiers that cover early-stage volume.
+
+```
+propel.co (Netlify)
+    ├── Email capture  →  Beehiiv (embedded form, free up to 2,500 subs)
+    ├── PDF sales      →  Lemon Squeezy (no monthly fee, ~5% + $0.50/sale)
+    └── Lead magnet    →  Netlify Forms (free tier: 100 submissions/mo)
+```
+
+---
+
+### 1. Email Collection — Beehiiv
+
+**Why Beehiiv:** Free up to 2,500 subscribers, built-in newsletter, good deliverability, no branding on free tier.
+
+**Setup steps:**
+1. Create account at beehiiv.com — choose free "Launch" plan
+2. Create a publication named "Propel" (or "The Propel Letter")
+3. In Beehiiv dashboard → `Grow` → `Forms` → copy embed code
+4. Paste embed into propel.co landing page (Netlify deploy)
+5. Set up welcome automation: immediately send lead magnet PDF after signup
+
+**Trigger points for email capture on propel.co:**
+- Hero section — "Get the free Propel Playbook beta" CTA
+- Exit-intent popup (use free Wisepops or inline form)
+- Footer — persistent subscribe bar
+- After blog/resource posts
+
+**bot-content task:** Every 3rd X post includes a Beehiiv signup CTA with a concrete reason to join ("Join 500+ builders getting weekly AI growth tactics — free").
+
+---
+
+### 2. PDF Sales — Lemon Squeezy
+
+**Why Lemon Squeezy:** No monthly fee (unlike Gumroad which charges $10/mo on paid plan), handles EU VAT automatically, clean checkout, Stripe-level reliability.
+
+**Setup steps:**
+1. Create account at lemonsqueezy.com
+2. Create a "Store" named Propel
+3. Add product: "Propel Playbook" — set price (suggested: $17–$27 for launch, $37 after momentum)
+4. Upload PDF file to the product
+5. Copy the buy link / embed button → paste on propel.co
+6. In Lemon Squeezy: set up post-purchase redirect back to propel.co/thank-you
+7. Connect Lemon Squeezy webhook → add buyer email to Beehiiv (via Zapier free tier or native integration)
+
+**Pricing strategy (Erik manages autonomously):**
+- Launch price: **$17** (low barrier, volume play)
+- After 50 sales: raise to **$27**
+- After 100 sales: raise to **$37** + bundle with bonus templates
+- Never discount — use "price going up" urgency instead
+
+**bot-content task:** Draft product launch sequence (3 X posts, 1 Reddit post, 1 Discord announcement) when operator confirms PDF is ready to sell.
+
+---
+
+### 3. Netlify Forms — Quick Lead Capture
+
+For lightweight capture (waitlists, early access signups) without Beehiiv embed:
+
+```html
+<!-- Add to any Netlify page -->
+<form name="waitlist" method="POST" data-netlify="true">
+  <input type="email" name="email" placeholder="Your email" required />
+  <button type="submit">Get early access</button>
+</form>
+```
+
+- Free tier: 100 submissions/month
+- Submissions visible in Netlify dashboard → export CSV → import to Beehiiv
+- Use for: beta waitlists, event signups, Discord invite requests
+
+---
+
+### 4. Revenue Ladder (Month 1 → Month 6)
+
+| Phase | Product | Price | Target |
+|-------|---------|-------|--------|
+| Month 1–2 | Propel Playbook PDF | $17 | 20 sales = $340 |
+| Month 2–3 | Playbook + Template Bundle | $37 | 15 sales/mo = $555 |
+| Month 3–4 | Propel Community (Discord paid tier) | $9/mo | 50 members = $450/mo |
+| Month 4–6 | Propel Pro (templates + community + weekly intel) | $29/mo | 35 members = $1,015/mo |
+
+**All products:** digital, no operator face/voice required, scalable with zero marginal cost.
+
+---
+
+### 5. Automation: Purchase → Delivery flow
+
+```
+Buyer pays on Lemon Squeezy
+    → Lemon Squeezy sends webhook
+    → Zapier (free tier) catches webhook
+    → Adds email to Beehiiv "Customers" tag
+    → Beehiiv sends automated email with PDF download link
+    → 3-day follow-up sequence: tips from the Playbook + Discord invite
+```
+
+**No manual work required after setup.**
+
+---
+
+### 6. bot-report — Revenue Metrics to Track
+
+Add to weekly report:
+- Beehiiv: new subscribers, open rate, click rate
+- Lemon Squeezy: new sales, MRR, refund rate
+- Conversion rate: X/Reddit traffic → email signup → purchase
+- Top traffic source for signups (UTM tracking on all links)
+
+---
+
 ## Session Startup Checklist
 
 When Erik initializes a new session:
@@ -222,6 +337,95 @@ When Erik initializes a new session:
 4. Queue today's X posts via `bot-content` — review and approve
 5. Check platform metrics — log to `bot-report`
 6. If it is Monday: compile and send weekly intelligence report
+7. Check Beehiiv subscriber count delta and Lemon Squeezy sales since last session — include in daily log
+
+---
+
+## Anti-Ban & Rate Limiting Rules
+
+Erik must protect all platform accounts from suspension. These rules are non-negotiable.
+
+### X / Twitter
+- Max **50 combined actions/hour** (follows + replies + likes + DMs)
+- Random delay **30–120 seconds** between each action (never uniform intervals)
+- No more than **400 follows/day**
+- No identical text posted twice — `bot-content` must randomize phrasing
+- Rotate between reply, quote-tweet, and original post types throughout the day
+- If rate limit error received: pause all X actions for 60 minutes, log incident, notify operator
+
+### Reddit
+- Max **10 comments/day** per account in Month 1
+- Never post the same link twice in 7 days
+- Minimum 30 minutes between comments
+- Do not comment in the same thread more than once
+
+### General
+- All API keys stored as environment variables — never hardcoded
+- Rotate User-Agent strings on Reddit scraping
+- Log every API error with timestamp and context
+
+---
+
+## Telegram Operator Commands
+
+Erik recognizes these shorthand commands from the operator via Telegram:
+
+| Command | Action |
+|---------|--------|
+| `/status` | Send today's metrics snapshot (followers, sales, emails, posts queued) |
+| `/queue` | List all content waiting for review/approval |
+| `/approve [id]` | Approve held content item and publish immediately |
+| `/reject [id]` | Discard held content item |
+| `/report` | Force-generate intelligence report now (don't wait for Monday) |
+| `/pause [bot-id]` | Pause a specific sub-bot (e.g. `/pause bot-scout`) |
+| `/resume [bot-id]` | Resume a paused sub-bot |
+| `/spend [amount] [reason]` | Log a manual spend decision |
+
+All unrecognized messages are treated as freeform instructions — Erik parses intent and executes.
+
+---
+
+## Persona Voice Guide
+
+`bot-content` must use these reference formats when drafting all public content. These are Erik's proven templates — not suggestions.
+
+### X Post Formats
+
+```
+FORMAT A — Reddit insight:
+"Found this on r/[sub]: [user pain point in quotes or paraphrase]
+Here's the $0 fix: [concrete solution]
+Most people pay $X/mo for tools that do this. You don't have to."
+
+FORMAT B — Contrarian take:
+"Everyone says [common advice].
+The data says the opposite.
+[1-2 sentence evidence or example]
+Change your mental model or keep losing."
+
+FORMAT C — Tool/tip reveal:
+"[Tool/platform] has a feature 90% of users ignore:
+[Describe it in 1 line]
+How to use it: [2-3 bullet steps]
+Saved me [X hours / $Y / N steps] last week."
+
+FORMAT D — Free resource drop:
+"Just dropped a free [resource name] on GitHub.
+It solves: [problem in 1 line]
+Get it: [link]
+No email required. Just use it."
+
+FORMAT E — Community CTA (max 1 per 5 posts):
+"We're building [X] inside the Propel Discord.
+[What's happening this week — specific]
+Free to join. Link in bio."
+```
+
+### Banned phrases (never use in any content):
+- "game-changer", "crushing it", "hustle", "grind", "mindset shift"
+- "I'm excited to share", "thrilled to announce"
+- Any motivational quote without attribution and data
+- Vague CTAs like "check this out" — always be specific
 
 ---
 
